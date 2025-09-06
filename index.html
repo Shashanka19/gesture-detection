@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture Recognition - Live Webcam</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.8rem;
+            font-weight: 300;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .webcam-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        #videoElement {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 3px solid #e0e0e0;
+            transition: border-color 0.3s ease;
+        }
+
+        #videoElement.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .video-overlay.recording {
+            background: rgba(244, 67, 54, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 160px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #startCamera {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        #captureFrame {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        #realTimeToggle {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        #realTimeToggle.active {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        #stopCamera {
+            background: linear-gradient(45deg, #9E9E9E, #757575);
+            color: white;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .status {
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status::before {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status.info {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            color: #1976d2;
+            border-left: 4px solid #2196F3;
+        }
+
+        .status.info::before {
+            background: #2196F3;
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            color: #2e7d32;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .status.success::before {
+            background: #4CAF50;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        .status.error::before {
+            background: #f44336;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .gesture-display-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .gesture-char {
+            font-size: 6rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            display: block;
+            text-shadow: none;
+            animation: gestureAppear 0.5s ease-out;
+        }
+
+        @keyframes gestureAppear {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .gesture-label {
+            font-size: 1.2rem;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .confidence-display {
+            margin-top: 15px;
+        }
+
+        .confidence-text {
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 6px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .results.hidden {
+            display: none;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .timestamp {
+            font-size: 0.9rem;
+            color: #666;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 18px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e0e0;
+            transition: transform 0.2s ease;
+        }
+
+        .detail-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .detail-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .performance-metrics {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .metrics-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #captureCanvas {
+            display: none;
+        }
+
+        .category-filter {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .category-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .category-btn {
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: auto;
+        }
+
+        .category-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .category-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .sidebar {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .gesture-char {
+                font-size: 4rem;
+            }
+            
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Gesture Recognition</h1>
+        
+        <div class="main-layout">
+            <div class="webcam-section">
+                <div class="video-container">
+                    <video id="videoElement" autoplay muted playsinline></video>
+                    <div id="videoOverlay" class="video-overlay">Camera Ready</div>
+                </div>
+                
+                <div class="controls">
+                    <button id="startCamera">📹 Start Camera</button>
+                    <button id="captureFrame" disabled>📸 Capture Gesture</button>
+                    <button id="realTimeToggle" disabled>🔄 Real-Time Mode</button>
+                    <button id="stopCamera" disabled>⏹️ Stop Camera</button>
+                </div>
+                
+                <div class="toggle-switch">
+                    <label class="switch" for="continuousMode">
+                        <input type="checkbox" id="continuousMode" aria-label="Toggle continuous detection mode">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Continuous Detection</span>
+                </div>
+                
+                <div id="status" class="status info">
+                    Click "Start Camera" to begin gesture recognition
+                </div>
+
+                <div class="results-section">
+                    <div id="results" class="hidden">
+                        <div class="result-header">
+                            <div class="result-title">🎯 Recognition Result</div>
+                            <div id="timestamp" class="timestamp">12:51:46 PM</div>
+                        </div>
+                        
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">Gesture Key</div>
+                                <div id="gestureKey" class="detail-value">three_fingers</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Confidence</div>
+                                <div id="confidence" class="detail-value">75.0%</div>
+                                <div class="confidence-bar">
+                                    <div id="confidenceFill" class="confidence-fill"></div>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Image Size</div>
+                                <div id="imageSize" class="detail-value">640×480</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Processing Time</div>
+                                <div id="processingTime" class="detail-value">584ms</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="gesture-display-card">
+                    <div class="gesture-label">Detected Gesture</div>
+                    <span id="gestureDisplay" class="gesture-char">?</span>
+                    <div class="confidence-display">
+                        <div class="confidence-text">Confidence: <span id="confidenceText">0%</span></div>
+                        <div class="confidence-bar">
+                            <div id="confidenceBar" class="confidence-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="category-filter">
+                    <div class="filter-title">Gesture Categories</div>
+                    <div class="category-buttons">
+                        <button class="category-btn active" data-category="all">All</button>
+                        <button class="category-btn" data-category="numbers">Numbers</button>
+                        <button class="category-btn" data-category="letters">Letters</button>
+                        <button class="category-btn" data-category="words">Words</button>
+                        <button class="category-btn" data-category="common">Common</button>
+                    </div>
+                </div>
+
+                <div class="performance-metrics">
+                    <div class="metrics-title">Performance Metrics</div>
+                    <div class="metric-item">
+                        <span class="metric-label">Total Requests</span>
+                        <span id="totalRequests" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Avg Response Time</span>
+                        <span id="avgResponseTime" class="metric-value">0ms</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Success Rate</span>
+                        <span id="successRate" class="metric-value">0%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Frame Skip Rate</span>
+                        <span id="frameSkipRate" class="metric-value">2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for frame capture -->
+    <div class="canvas-container">
+        <canvas id="captureCanvas"></canvas>
+    </div>
+
+    <script>
+        class GestureRecognition {
+            constructor() {
+                this.video = document.getElementById('videoElement');
+                this.canvas = document.getElementById('captureCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.stream = null;
+                this.isCapturing = false;
+                this.isRealTimeMode = false;
+                this.realTimeInterval = null;
+                this.frameSkipCounter = 0;
+                this.lastPredictionTime = 0;
+                this.performanceMetrics = {
+                    totalRequests: 0,
+                    averageResponseTime: 0,
+                    successRate: 0,
+                    frameRate: 0
+                };
+                
+                // Performance settings
+                this.settings = {
+                    realTimeInterval: 500, // ms between predictions
+                    frameSkipRate: 2, // Skip every N frames for performance
+                    maxConcurrentRequests: 1,
+                    confidenceThreshold: 0.6,
+                    smoothingEnabled: true,
+                    adaptiveFrameRate: true
+                };
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startCamera');
+                this.captureBtn = document.getElementById('captureFrame');
+                this.realTimeBtn = document.getElementById('realTimeToggle');
+                this.stopBtn = document.getElementById('stopCamera');
+                this.continuousToggle = document.getElementById('continuousMode');
+                this.videoOverlay = document.getElementById('videoOverlay');
+                this.status = document.getElementById('status');
+                this.results = document.getElementById('results');
+                this.gestureDisplay = document.getElementById('gestureDisplay');
+                this.gestureKey = document.getElementById('gestureKey');
+                this.confidence = document.getElementById('confidence');
+                this.confidenceFill = document.getElementById('confidenceFill');
+                this.confidenceText = document.getElementById('confidenceText');
+                this.confidenceBar = document.getElementById('confidenceBar');
+                this.imageSize = document.getElementById('imageSize');
+                this.processingTime = document.getElementById('processingTime');
+                this.timestamp = document.getElementById('timestamp');
+                
+                // Performance metrics elements
+                this.totalRequests = document.getElementById('totalRequests');
+                this.avgResponseTime = document.getElementById('avgResponseTime');
+                this.successRate = document.getElementById('successRate');
+                this.frameSkipRate = document.getElementById('frameSkipRate');
+                
+                // Category filter elements
+                this.categoryButtons = document.querySelectorAll('.category-btn');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startCamera());
+                this.captureBtn.addEventListener('click', () => this.captureFrame());
+                this.realTimeBtn.addEventListener('click', () => this.toggleRealTimeMode());
+                this.stopBtn.addEventListener('click', () => this.stopCamera());
+                this.continuousToggle.addEventListener('change', () => this.handleContinuousToggle());
+                
+                // Category filter events
+                this.categoryButtons.forEach(btn => {
+                    btn.addEventListener('click', () => this.handleCategoryFilter(btn));
+                });
+            }
+
+            handleContinuousToggle() {
+                if (this.continuousToggle.checked && !this.isRealTimeMode) {
+                    this.toggleRealTimeMode();
+                } else if (!this.continuousToggle.checked && this.isRealTimeMode) {
+                    this.toggleRealTimeMode();
+                }
+            }
+
+            handleCategoryFilter(selectedBtn) {
+                // Update active button
+                this.categoryButtons.forEach(btn => btn.classList.remove('active'));
+                selectedBtn.classList.add('active');
+                
+                const category = selectedBtn.dataset.category;
+                // This could be used to filter displayed gestures or adjust recognition focus
+                console.log(`Category filter changed to: ${category}`);
+            }
+
+            updateVideoOverlay(text, isRecording = false) {
+                this.videoOverlay.textContent = text;
+                this.videoOverlay.className = isRecording ? 'video-overlay recording' : 'video-overlay';
+            }
+
+            updatePerformanceDisplay() {
+                this.totalRequests.textContent = this.performanceMetrics.totalRequests;
+                this.avgResponseTime.textContent = `${Math.round(this.performanceMetrics.averageResponseTime)}ms`;
+                this.successRate.textContent = `${Math.round(this.performanceMetrics.successRate * 100)}%`;
+                this.frameSkipRate.textContent = this.settings.frameSkipRate;
+            }
+
+            async startCamera() {
+                try {
+                    this.updateStatus('Requesting camera access...', 'info');
+                    
+                    const constraints = {
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            facingMode: 'user'
+                        }
+                    };
+
+                    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    this.video.srcObject = this.stream;
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        
+                        this.updateStatus('Camera ready! Use "Capture Gesture" for single shots or "Real-Time Mode" for continuous recognition', 'success');
+                        this.updateVideoOverlay('Camera Active');
+                        this.video.classList.add('active');
+                        this.startBtn.disabled = true;
+                        this.captureBtn.disabled = false;
+                        this.realTimeBtn.disabled = false;
+                        this.stopBtn.disabled = false;
+                    };
+
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    this.updateStatus(`Camera error: ${error.message}`, 'error');
+                }
+            }
+
+            async captureFrame(isRealTime = false) {
+                if (this.isCapturing && this.settings.maxConcurrentRequests <= 1) return;
+                
+                // Frame skipping for performance
+                if (isRealTime && this.frameSkipCounter < this.settings.frameSkipRate) {
+                    this.frameSkipCounter++;
+                    return;
+                }
+                this.frameSkipCounter = 0;
+                
+                this.isCapturing = true;
+                if (!isRealTime) {
+                    this.captureBtn.disabled = true;
+                    this.captureBtn.innerHTML = '<span class="loading"></span>Processing...';
+                }
+                
+                try {
+                    const startTime = Date.now();
+                    
+                    // Draw current video frame to canvas
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                    
+                    // Convert canvas to base64 JPEG with optimized quality for real-time
+                    const quality = isRealTime ? 0.6 : 0.8;
+                    const base64Image = this.canvas.toDataURL('image/jpeg', quality);
+                    
+                    // Remove data URL prefix
+                    const base64Data = base64Image.split(',')[1];
+                    
+                    if (!isRealTime) {
+                        this.updateStatus('Sending image to AI model...', 'info');
+                    }
+                    
+                    // Send to backend API with timeout for real-time mode
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), isRealTime ? 2000 : 10000);
+                    
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            image: base64Data
+                        }),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+                    const result = await response.json();
+                    const processingTime = Date.now() - startTime;
+                    
+                    // Update performance metrics
+                    this.updatePerformanceMetrics(processingTime, result.success);
+                    
+                    if (result.success) {
+                        // Apply confidence threshold filtering
+                        const confidence = result.details?.confidence || 0;
+                        if (confidence >= this.settings.confidenceThreshold || !isRealTime) {
+                            this.displayResult(result, processingTime, isRealTime);
+                            if (!isRealTime) {
+                                this.updateStatus('Gesture recognized successfully!', 'success');
+                            }
+                        }
+                    } else {
+                        if (!isRealTime) {
+                            throw new Error(result.message || 'Prediction failed');
+                        }
+                    }
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Request timeout - skipping frame');
+                    } else {
+                        console.error('Error during capture:', error);
+                        if (!isRealTime) {
+                            this.updateStatus(`Recognition error: ${error.message}`, 'error');
+                        }
+                    }
+                } finally {
+                    this.isCapturing = false;
+                    if (!isRealTime) {
+                        this.captureBtn.disabled = false;
+                        this.captureBtn.innerHTML = '📸 Capture Gesture';
+                    }
+                }
+            }
+
+            toggleRealTimeMode() {
+                this.isRealTimeMode = !this.isRealTimeMode;
+                
+                if (this.isRealTimeMode) {
+                    this.startRealTimeMode();
+                } else {
+                    this.stopRealTimeMode();
+                }
+            }
+
+            startRealTimeMode() {
+                this.realTimeBtn.innerHTML = '⏸️ Stop Real-Time';
+                this.realTimeBtn.classList.add('active');
+                this.captureBtn.disabled = true;
+                this.continuousToggle.checked = true;
+                this.updateStatus('Real-time gesture recognition active', 'success');
+                this.updateVideoOverlay('Recording', true);
+                
+                // Adaptive frame rate based on performance
+                const interval = this.settings.adaptiveFrameRate ? 
+                    Math.max(300, this.performanceMetrics.averageResponseTime * 1.5) : 
+                    this.settings.realTimeInterval;
+                
+                this.realTimeInterval = setInterval(() => {
+                    if (this.video.readyState === 4) { // HAVE_ENOUGH_DATA
+                        this.captureFrame(true);
+                    }
+                }, interval);
+            }
+
+            stopRealTimeMode() {
+                if (this.realTimeInterval) {
+                    clearInterval(this.realTimeInterval);
+                    this.realTimeInterval = null;
+                }
+                
+                this.realTimeBtn.innerHTML = '🔄 Real-Time Mode';
+                this.realTimeBtn.classList.remove('active');
+                this.captureBtn.disabled = false;
+                this.continuousToggle.checked = false;
+                this.updateStatus('Real-time mode stopped. Use "Capture Gesture" for manual recognition', 'info');
+                this.updateVideoOverlay('Camera Active');
+            }
+
+            updatePerformanceMetrics(responseTime, success) {
+                this.performanceMetrics.totalRequests++;
+                
+                // Update average response time
+                const totalTime = this.performanceMetrics.averageResponseTime * (this.performanceMetrics.totalRequests - 1) + responseTime;
+                this.performanceMetrics.averageResponseTime = totalTime / this.performanceMetrics.totalRequests;
+                
+                // Update success rate
+                if (success) {
+                    this.performanceMetrics.successRate = 
+                        ((this.performanceMetrics.successRate * (this.performanceMetrics.totalRequests - 1)) + 1) / 
+                        this.performanceMetrics.totalRequests;
+                } else {
+                    this.performanceMetrics.successRate = 
+                        (this.performanceMetrics.successRate * (this.performanceMetrics.totalRequests - 1)) / 
+                        this.performanceMetrics.totalRequests;
+                }
+                
+                // Adaptive performance tuning
+                if (this.settings.adaptiveFrameRate) {
+                    if (this.performanceMetrics.averageResponseTime > 1000) {
+                        this.settings.frameSkipRate = Math.min(5, this.settings.frameSkipRate + 1);
+                    } else if (this.performanceMetrics.averageResponseTime < 300) {
+                        this.settings.frameSkipRate = Math.max(1, this.settings.frameSkipRate - 1);
+                    }
+                }
+                
+                // Update performance display
+                this.updatePerformanceDisplay();
+            }
+
+            displayResult(result, processingTime, isRealTime = false) {
+                // Show results section
+                this.results.classList.remove('hidden');
+                
+                // Update timestamp
+                this.timestamp.textContent = new Date().toLocaleTimeString();
+                
+                // Display main gesture result with animation
+                this.gestureDisplay.textContent = result.gesture || '?';
+                this.gestureDisplay.style.animation = 'none';
+                setTimeout(() => {
+                    this.gestureDisplay.style.animation = 'gestureAppear 0.5s ease-out';
+                }, 10);
+                
+                // Update sidebar gesture display
+                this.confidenceText.textContent = `${Math.round((result.details?.confidence || 0) * 100)}%`;
+                this.confidenceBar.style.width = `${(result.details?.confidence || 0) * 100}%`;
+                
+                // Update details
+                const details = result.details || {};
+                this.gestureKey.textContent = details.gesture_key || 'unknown';
+                
+                const conf = details.confidence || 0;
+                this.confidence.textContent = `${(conf * 100).toFixed(1)}%`;
+                this.confidenceFill.style.width = `${conf * 100}%`;
+                
+                const shape = result.image_shape || [];
+                this.imageSize.textContent = shape.length > 0 ? `${shape[1]}×${shape[0]}` : 'Unknown';
+                
+                this.processingTime.textContent = `${processingTime}ms`;
+                
+                // Scroll to results
+                this.results.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            stopCamera() {
+                // Stop real-time mode if active
+                if (this.isRealTimeMode) {
+                    this.stopRealTimeMode();
+                    this.isRealTimeMode = false;
+                }
+                
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                
+                this.video.srcObject = null;
+                this.video.classList.remove('active');
+                this.updateStatus('Camera stopped', 'info');
+                this.updateVideoOverlay('Camera Ready');
+                
+                this.startBtn.disabled = false;
+                this.captureBtn.disabled = true;
+                this.realTimeBtn.disabled = true;
+                this.stopBtn.disabled = true;
+                this.continuousToggle.checked = false;
+                this.results.classList.add('hidden');
+            }
+
+            updateStatus(message, type = 'info') {
+                this.status.textContent = message;
+                this.status.className = `status ${type}`;
+            }
+        }
+
+        // Initialize the application when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new GestureRecognition();
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Page is hidden, could pause video processing
+                console.log('Page hidden');
+            } else {
+                // Page is visible again
+                console.log('Page visible');
+            }
+        });
+    </script>
+</body>
+</html>
